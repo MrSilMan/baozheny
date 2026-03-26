@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/USER/Documents/DOCs/SoftWise/Softwise-Proj/**)",
+      "Bash(npm audit:*)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); [print\\(k, v[''''severity'''']\\) for k,v in d[''''vulnerabilities''''].items\\(\\)]\")",
+      "Bash(netstat -ano)",
+      "Bash(tasklist /FI \"PID eq 7632\")",
+      "Bash(tasklist /FI \"PID eq 2880\")",
+      "Bash(cmd //c \"tasklist /FI \"\"PID eq 7632\"\" && tasklist /FI \"\"PID eq 2880\"\"\")",
+      "Bash(cmd //c \"tasklist\")",
+      "Bash(npm run:*)",
+      "Bash(grep -n \"withServerActionInstrumentation\" actions/*.ts)",
+      "Bash(xargs grep:*)",
+      "Bash(npm install:*)",
+      "Bash(ls \"c:/Users/USER/Documents/DOC''s/SoftWise/Softwise-Proj/BaoZhen/app/\\(dashboard\\)/dashboard/admin/\")",
+      "Bash(node -e \"const p = require\\(''''./node_modules/next-auth/package.json''''\\); console.log\\(JSON.stringify\\(p.peerDependencies || {}\\)\\); console.log\\(JSON.stringify\\(p.dependencies || {}\\)\\)\")",
+      "Bash(ls \"C:/Users/USER/Documents/DOC''s/SoftWise/Softwise-Proj/BaoZhen/app/\\(admin\\)/orders/\")",
+      "Bash(cat \"c:/Users/USER/Documents/DOC''s/SoftWise/Softwise-Proj/BaoZhen/app/\\(public\\)/layout.tsx\")",
+      "Bash(npx tsc:*)",
+      "Bash(grep -v \"^$\")",
+      "Bash(\"c:/Users/USER/Documents/DOC''s/SoftWise/Softwise-Proj/BaoZhen/__tests__/tsconfig.json\":*)",
+      "Bash(npx prisma:*)",
+      "Bash(npx shadcn@latest add select checkbox textarea form --yes)",
+      "Bash(npx shadcn@latest add select checkbox textarea form --overwrite)",
+      "Bash(printf 'n\\\\nn\\\\nn\\\\nn\\\\nn\\\\nn\\\\nn\\\\n')",
+      "Bash(npx shadcn@latest add form)",
+      "Bash(npx shadcn@latest add form --force)",
+      "Bash(npx shadcn@latest add form --overwrite)",
+      "Bash(find c:/Users/USER/Documents/DOC''s/SoftWise/Softwise-Proj/BaoZhen/src -type f -name *.tsx -o -name *.ts)"
+    ]
+  }
+}

@@ -1,0 +1,539 @@
+// BaoZhen (宝臻) — China Sourcing & Fulfillment Platform
+// Prisma Schema v2 — Sourcing Agent Model
+// All monetary values use Decimal. Never use Float for money.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum Role {
+  BUYER
+  ADMIN
+  AGENT
+}
+
+enum OrderStatus {
+  DRAFT
+  SUBMITTED
+  PROCURING
+  ARRIVED_CN
+  INSPECTION_PENDING
+  INSPECTION_DONE
+  STORED
+  CANCELLED
+}
+
+enum InspectionResult {
+  PENDING
+  PASSED
+  FAILED
+  PARTIAL
+}
+
+enum ConsolidationStatus {
+  DRAFT
+  REQUESTED
+  CONFIRMED
+  PACKED
+  HANDED_OFF
+}
+
+enum ShipmentStatus {
+  CREATED
+  PICKED_UP
+  IN_TRANSIT
+  CUSTOMS
+  OUT_FOR_DELIVERY
+  DELIVERED
+  EXCEPTION
+}
+
+enum TransactionType {
+  TOP_UP
+  PROCUREMENT
+  FEE
+  REFUND
+  SHIPPING_ESTIMATE
+  ADJUSTMENT
+}
+
+enum ServiceType {
+  PROCUREMENT
+  QUALITY_INSPECTION
+  WAREHOUSING
+  CONSOLIDATION
+  LABELING
+  REPACKAGING
+}
+
+enum SupplierPlatform {
+  TAOBAO
+  PINDUODUO
+  ALI1688
+  WECHAT
+  OTHER
+}
+
+enum WarehouseItemStatus {
+  AWAITING
+  STORED
+  IN_CONSOLIDATION
+  SHIPPED
+}
+
+enum NotificationType {
+  ORDER_UPDATE
+  INSPECTION_READY
+  INSPECTION_FAILED
+  SHIPMENT_UPDATE
+  WALLET_CREDITED
+  WALLET_DEBITED
+  CONSOLIDATION_READY
+  SYSTEM
+}
+
+// ============================================================
+// USER & AUTH
+// ============================================================
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  passwordHash  String?
+  role          Role      @default(BUYER)
+  avatarUrl     String?
+  phone         String?
+  balance       Decimal   @default(0) @db.Decimal(12, 2)
+  banned        Boolean   @default(false)
+  bannedAt      DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // NextAuth adapter relations
+  accounts Account[]
+  sessions Session[]
+
+  // App relations
+  addresses            Address[]
+  procurementOrders    ProcurementOrder[]    @relation("BuyerOrders")
+  agentOrders          ProcurementOrder[]    @relation("AgentOrders")
+  inspectionReports    InspectionReport[]
+  consolidationRequests ConsolidationRequest[]
+  walletTransactions   WalletTransaction[]
+  notifications        Notification[]
+
+  @@index([email])
+  @@index([role])
+  @@index([createdAt])
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+model Address {
+  id         String   @id @default(cuid())
+  userId     String
+  fullName   String
+  line1      String
+  line2      String?
+  city       String
+  state      String?
+  postalCode String
+  country    String
+  phone      String?
+  isDefault  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  consolidationRequests ConsolidationRequest[]
+
+  @@index([userId])
+  @@map("addresses")
+}
+
+// ============================================================
+// SUPPLIERS (Chinese supplier directory — internal reference)
+// ============================================================
+
+model Supplier {
+  id          String           @id @default(cuid())
+  name        String
+  platform    SupplierPlatform
+  wechatId    String?
+  city        String?
+  rating      Decimal          @default(0) @db.Decimal(3, 2)
+  notes       String?          @db.Text
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  procurementOrders ProcurementOrder[]
+
+  @@index([platform])
+  @@map("suppliers")
+}
+
+// ============================================================
+// PROCUREMENT ORDERS
+// ============================================================
+
+model ProcurementOrder {
+  id                 String           @id @default(cuid())
+  orderNumber        String           @unique @default(cuid())
+  buyerId            String
+  assignedAgentId    String?
+  supplierId         String?
+  status             OrderStatus      @default(DRAFT)
+  platform           SupplierPlatform?
+  productUrl         String?
+  productName        String
+  productDescription String?          @db.Text
+  imageUrls          String[]
+  specNotes          String?          @db.Text
+  quantity           Int
+  unitPriceCNY       Decimal?         @db.Decimal(12, 2)
+  totalPriceCNY      Decimal?         @db.Decimal(12, 2)
+  serviceFeeUSD      Decimal?         @db.Decimal(12, 2)
+  agentNotes         String?          @db.Text
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  buyer          User              @relation("BuyerOrders", fields: [buyerId], references: [id])
+  agent          User?             @relation("AgentOrders", fields: [assignedAgentId], references: [id])
+  supplier       Supplier?         @relation(fields: [supplierId], references: [id])
+  warehouseItem  WarehouseItem?
+  transactions   WalletTransaction[]
+
+  @@index([buyerId])
+  @@index([assignedAgentId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([orderNumber])
+  @@map("procurement_orders")
+}
+
+// ============================================================
+// WAREHOUSE
+// ============================================================
+
+model WarehouseItem {
+  id                   String              @id @default(cuid())
+  procurementOrderId   String              @unique
+  buyerId              String
+  sku                  String?
+  status               WarehouseItemStatus @default(AWAITING)
+  weight               Decimal?            @db.Decimal(10, 3) // grams
+  dimensions           Json?               // { l: number, w: number, h: number } in cm
+  photoUrls            String[]
+  receivedAt           DateTime            @default(now())
+  storageStartDate     DateTime?
+  storageFeePerDay     Decimal             @default(0) @db.Decimal(8, 4)
+  consolidationId      String?
+  notes                String?             @db.Text
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+
+  order            ProcurementOrder   @relation(fields: [procurementOrderId], references: [id], onDelete: Cascade)
+  consolidation    ConsolidationRequest? @relation(fields: [consolidationId], references: [id])
+  inspectionReport InspectionReport?
+  storageFees      StorageFeeLog[]
+  consolidationItems ConsolidationItem[]
+
+  @@index([buyerId])
+  @@index([status])
+  @@index([consolidationId])
+  @@map("warehouse_items")
+}
+
+model StorageFeeLog {
+  id              String   @id @default(cuid())
+  warehouseItemId String
+  chargedDate     DateTime
+  amountUSD       Decimal  @db.Decimal(10, 4)
+  note            String?
+  createdAt       DateTime @default(now())
+
+  warehouseItem WarehouseItem @relation(fields: [warehouseItemId], references: [id], onDelete: Cascade)
+
+  @@index([warehouseItemId])
+  @@index([chargedDate])
+  @@map("storage_fee_logs")
+}
+
+// ============================================================
+// INSPECTION
+// ============================================================
+
+model InspectionReport {
+  id              String           @id @default(cuid())
+  warehouseItemId String           @unique
+  inspectorId     String
+  result          InspectionResult @default(PENDING)
+  overallNotes    String?          @db.Text
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  warehouseItem WarehouseItem      @relation(fields: [warehouseItemId], references: [id], onDelete: Cascade)
+  inspector     User               @relation(fields: [inspectorId], references: [id])
+  checkItems    InspectionCheckItem[]
+
+  @@index([warehouseItemId])
+  @@index([inspectorId])
+  @@index([result])
+  @@map("inspection_reports")
+}
+
+model InspectionCheckItem {
+  id        String   @id @default(cuid())
+  reportId  String
+  checkName String
+  passed    Boolean
+  photoUrls String[]
+  notes     String?
+  createdAt DateTime @default(now())
+
+  report InspectionReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+  @@map("inspection_check_items")
+}
+
+// ============================================================
+// CONSOLIDATION
+// ============================================================
+
+model ConsolidationRequest {
+  id                  String              @id @default(cuid())
+  buyerId             String
+  addressId           String
+  status              ConsolidationStatus @default(DRAFT)
+  serviceAddons       ServiceType[]
+  estimatedWeightKg   Decimal?            @db.Decimal(10, 3)
+  packagingNotes      String?             @db.Text
+  agentNotes          String?             @db.Text
+  requestedAt         DateTime            @default(now())
+  confirmedAt         DateTime?
+  handedOffAt         DateTime?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  buyer          User               @relation(fields: [buyerId], references: [id])
+  address        Address            @relation(fields: [addressId], references: [id])
+  items          ConsolidationItem[]
+  shipment       Shipment?
+  warehouseItems WarehouseItem[]
+
+  @@index([buyerId])
+  @@index([status])
+  @@index([requestedAt])
+  @@map("consolidation_requests")
+}
+
+model ConsolidationItem {
+  id               String @id @default(cuid())
+  consolidationId  String
+  warehouseItemId  String
+
+  consolidation ConsolidationRequest @relation(fields: [consolidationId], references: [id], onDelete: Cascade)
+  warehouseItem WarehouseItem        @relation(fields: [warehouseItemId], references: [id])
+
+  @@unique([consolidationId, warehouseItemId])
+  @@index([consolidationId])
+  @@index([warehouseItemId])
+  @@map("consolidation_items")
+}
+
+// ============================================================
+// CARRIERS & SHIPMENTS
+// ============================================================
+
+model Carrier {
+  id                   String    @id @default(cuid())
+  name                 String
+  code                 String    @unique
+  trackingUrlTemplate  String    // e.g. https://track.dhl.com/{number}
+  logoUrl              String?
+  active               Boolean   @default(true)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  shipments Shipment[]
+
+  @@index([active])
+  @@map("carriers")
+}
+
+model Shipment {
+  id                String         @id @default(cuid())
+  consolidationId   String         @unique
+  carrierId         String
+  trackingNumber    String         @unique
+  labelUrl          String?
+  status            ShipmentStatus @default(CREATED)
+  estimatedDelivery DateTime?
+  actualDelivery    DateTime?
+  handedOffAt       DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  consolidation ConsolidationRequest @relation(fields: [consolidationId], references: [id], onDelete: Cascade)
+  carrier       Carrier              @relation(fields: [carrierId], references: [id])
+  events        ShipmentEvent[]
+
+  @@index([trackingNumber])
+  @@index([status])
+  @@index([carrierId])
+  @@map("shipments")
+}
+
+model ShipmentEvent {
+  id          String         @id @default(cuid())
+  shipmentId  String
+  status      ShipmentStatus
+  location    String?
+  description String?
+  occurredAt  DateTime       @default(now())
+
+  shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  @@index([shipmentId])
+  @@index([occurredAt])
+  @@map("shipment_events")
+}
+
+// ============================================================
+// WALLET & PAYMENTS
+// ============================================================
+
+model WalletTransaction {
+  id                    String          @id @default(cuid())
+  userId                String
+  type                  TransactionType
+  amountUSD             Decimal         @db.Decimal(12, 2)
+  balanceBefore         Decimal         @db.Decimal(12, 2)
+  balanceAfter          Decimal         @db.Decimal(12, 2)
+  relatedOrderId        String?
+  stripePaymentIntentId String?
+  note                  String?
+  createdAt             DateTime        @default(now())
+
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  order        ProcurementOrder? @relation(fields: [relatedOrderId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
+  @@map("wallet_transactions")
+}
+
+model Invoice {
+  id        String   @id @default(cuid())
+  userId    String
+  totalUSD  Decimal  @db.Decimal(12, 2)
+  issuedAt  DateTime @default(now())
+  pdfUrl    String?
+
+  @@index([userId])
+  @@map("invoices")
+}
+
+// ============================================================
+// CONFIG & SYSTEM
+// ============================================================
+
+model ServiceFeeConfig {
+  id          String      @id @default(cuid())
+  serviceType ServiceType @unique
+  baseFeeUSD  Decimal     @db.Decimal(12, 4)
+  description String?
+  active      Boolean     @default(true)
+  updatedAt   DateTime    @updatedAt
+
+  @@map("service_fee_configs")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  metadata  Json?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([entity])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String
+  read      Boolean          @default(false)
+  link      String?
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([read])
+  @@index([createdAt])
+  @@map("notifications")
+}

@@ -1,0 +1,116 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Syne:wght@400;500;600;700;800&display=swap");
+@import "tailwindcss";
+@config "../tailwind.config.ts";
+
+@theme inline {
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+}
+
+@layer base {
+  :root {
+    /* Vermillion #C0392B → hsl(4, 67%, 46%) */
+    /* Gold #D4A017 → hsl(45, 73%, 47%) */
+    --background: 0 0% 100%;
+    --foreground: 20 14% 10%;         /* Ink black */
+    --card: 0 0% 100%;
+    --card-foreground: 20 14% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 20 14% 10%;
+    --primary: 4 67% 46%;             /* Vermillion #C0392B */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 45 73% 47%;          /* Gold #D4A017 */
+    --secondary-foreground: 20 14% 10%;
+    --muted: 20 6% 96%;
+    --muted-foreground: 20 9% 46%;
+    --accent: 45 73% 47%;             /* Gold accent */
+    --accent-foreground: 20 14% 10%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 20 10% 90%;
+    --input: 20 10% 90%;
+    --ring: 4 67% 46%;
+    --radius: 0.5rem;
+    --font-display: "Syne", sans-serif;
+    --font-body: "DM Sans", sans-serif;
+  }
+
+  .dark {
+    --background: 4 15% 7%;           /* Very dark vermillion-tinted bg */
+    --foreground: 20 10% 92%;
+    --card: 4 15% 10%;
+    --card-foreground: 20 10% 92%;
+    --popover: 4 15% 10%;
+    --popover-foreground: 20 10% 92%;
+    --primary: 4 67% 58%;             /* Lighter vermillion for dark bg */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 45 73% 47%;
+    --secondary-foreground: 20 14% 10%;
+    --muted: 4 15% 16%;
+    --muted-foreground: 20 10% 56%;
+    --accent: 45 73% 47%;
+    --accent-foreground: 20 14% 10%;
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 20 10% 92%;
+    --border: 4 15% 20%;
+    --input: 4 15% 20%;
+    --ring: 4 67% 58%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-body;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display;
+  }
+}
+
+/* Skeleton shimmer */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--muted)) 25%,
+    hsl(var(--muted-foreground) / 0.1) 50%,
+    hsl(var(--muted)) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
